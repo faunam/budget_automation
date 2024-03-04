@@ -1,11 +1,11 @@
 from selenium import webdriver
 from selenium.webdriver.common.by import By
-from selenium.common.exceptions import ElementNotInteractableException, NoSuchElementException
 import subprocess
 import time
 import json
 import os
 from dotenv import load_dotenv
+from transaction_parser import Transactions
 
 # scraping credit karma for transaction history
 
@@ -28,7 +28,12 @@ def login(driver):
     time.sleep(1)
     driver.find_element(By.ID, 'Logon').click()
 
-def get_requests(network_log):
+def write_json(data, filename):
+    # data: json-encodable data, filename: str including extension
+    with open(filename, 'w') as outfile:
+        outfile.write(json.dumps(data))
+
+def get_network_requests(network_log):
     # return list of request events meeting filter_fun criteria, if provided
     events = []
     for entry in network_log:
@@ -40,8 +45,8 @@ def get_requests(network_log):
     return events
 
 
-def get_responses(driver, network_log):
-    requests = get_requests(network_log)
+def get_network_responses(driver, network_log):
+    requests = get_network_requests(network_log)
     request_ids = [request['params']['requestId'] for request in requests]
     responses = {}
     skipped_request_ids = []
@@ -53,15 +58,27 @@ def get_responses(driver, network_log):
         except:
             skipped_request_ids.append(request_id)
 
-    with open('network_log.json', 'w') as outfile:
-        # avoid double encode
-        outfile.write(json.dumps([json.loads(entry['message'])['message'] for entry in network_log]))
-    with open('requests.json', 'w') as outfile:
-        outfile.write(json.dumps(requests))
-    with open('skipped.json', 'w') as outfile:
-        outfile.write(json.dumps(skipped_request_ids))
-    with open('responses.json', 'w') as outfile:
-        outfile.write(json.dumps(responses))
+    write_json(requests, 'requests.json')
+    write_json(responses, 'responses.json')
+    # with open('network_log.json', 'w') as outfile:
+    #     # avoid double encode
+    #     outfile.write(json.dumps([json.loads(entry['message'])['message'] for entry in network_log]))
+    return responses
+
+def get_transactions(driver, network_log):
+    # returns list of transaction dicts from ck
+    # responses = []
+    # with open('responses.json', 'r') as infile:
+    #     responses = json.load(infile)
+    responses = get_network_responses(driver, network_log)
+    for response in responses.values():
+        if bool('data' in response) \
+        and bool('prime' in response['data']) \
+        and 'transactionList' in response['data']['prime']:
+            # list
+            return response['data']['prime']['transactionList']['transactions']
+        
+    raise Exception('response error: transactions not found')
 
 def test():
     url = 'https://www.creditkarma.com/auth/logon'
@@ -75,8 +92,9 @@ def test():
     time.sleep(5)
     network_log = driver.get_log('performance') 
     
-    print(len(get_requests(network_log)))
-    get_responses(driver, network_log)
+    transaction_list = get_transactions(driver, network_log)
+    transactions = Transactions(transaction_list)
+    transactions.to_csv('transactions.csv')
 
 
-test()
+# test()
