@@ -80,6 +80,13 @@ def get_transactions(driver, network_log):
         
     raise Exception('response error: transactions not found')
 
+def parse_transactions(transaction_list): # todo change name
+    # read from last tr id
+    # replace tr in file with newest
+    # add trs to new list until you reach tr id
+    # throw error if tr id not found; we dont want dupes
+    pass
+
 def test():
     url = 'https://www.creditkarma.com/auth/logon'
     driver = setup_driver()
@@ -98,3 +105,6 @@ def test():
 
 
 # test()
+transaction_list = get_transactions([], [])
+transactions = Transactions(transaction_list)
+transactions.to_csv('transactions.csv')
