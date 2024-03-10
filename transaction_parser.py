@@ -3,6 +3,7 @@ from enum import Enum
 
 class Columns():
     def __init__(self):
+        self.ID = 'Id'
         self.DATE = 'Date'
         self.DESCRIPTION = 'Description'
         self.AMOUNT = 'Amount'
@@ -22,6 +23,7 @@ class Transactions:
             self.dict[name] = []
 
         for transaction in transaction_list:
+            self.dict[column_names.ID].append(transaction['id'])
             self.dict[column_names.DATE].append(transaction['date'])
             self.dict[column_names.DESCRIPTION].append(transaction['description'])
             self.dict[column_names.AMOUNT].append(transaction['amount']['value'])
